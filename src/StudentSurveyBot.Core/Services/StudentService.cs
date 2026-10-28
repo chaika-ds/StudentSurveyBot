@@ -2,12 +2,6 @@ using StudentSurveyBot.Core.Entities;
 
 namespace StudentSurveyBot.Core.Services;
 
-public interface IStudentService
-{
-    Task<Student> GetOrCreateAsync(long tgId, CancellationToken cancellationToken = default);
-    Task<Student?> GetByTgIdAsync(long tgId, CancellationToken cancellationToken = default);
-}
-
 public sealed class StudentService : IStudentService
 {
     private readonly StudentSurveyBot.Data.AppDbContext _dbContext;
@@ -31,9 +25,9 @@ public sealed class StudentService : IStudentService
         {
             Id = Guid.NewGuid(),
             TgId = tgId,
-            FullName = "",
-            Direction = "",
-            Course = "",
+            FullName = string.Empty,
+            Direction = string.Empty,
+            Course = string.Empty,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
