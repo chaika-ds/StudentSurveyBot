@@ -1,7 +1,10 @@
+using StudentSurveyBot.Bot.Abstractions;
+using StudentSurveyBot.Bot.States;
 using Telegram.Bot;
+using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
 
-namespace StudentSurveyBot.Bot;
+namespace StudentSurveyBot.Bot.Handlers;
 
 public sealed class StartCommandHandler
 {
@@ -30,9 +33,12 @@ public sealed class StartCommandHandler
             await _userStateStore.SaveAsync(chatId, newState, cancellationToken);
         }
 
-        await _botClient.SendTextMessage(
-            chatId: chatId,
-            text: "Привет! Мы начинаем анкету. Введи ФИО (2-120 символов).",
-            cancellationToken: cancellationToken);
+        await _botClient.SendRequest(
+            new SendMessageRequest
+            {
+                ChatId = chatId,
+                Text = "Привет! Мы начинаем анкету. Введи ФИО (2-120 символов)."
+            },
+            cancellationToken);
     }
 }

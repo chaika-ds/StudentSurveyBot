@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StudentSurveyBot.Core.Entities;
 using StudentSurveyBot.Data;
+using Xunit;
 
 namespace StudentSurveyBot.UnitTests;
 
@@ -22,11 +23,14 @@ public sealed class StudentServiceTests
             Direction = "IT",
             Course = "3"
         };
-
+            
         context.Students.Add(student);
         await context.SaveChangesAsync();
-
-        var service = new StudentSurveyBot.Core.Services.StudentService(context);
+                
+        var service = new StudentSurveyBot.Core.Services.StudentService(
+            //context
+            /* add other required constructor arguments here */
+        );
         var created = await service.GetOrCreateAsync(111L);
 
         Assert.Equal(1, await context.Students.CountAsync(x => x.TgId == 111L));

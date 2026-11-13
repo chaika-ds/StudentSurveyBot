@@ -1,4 +1,6 @@
-namespace StudentSurveyBot.Bot;
+using StudentSurveyBot.Bot.States;
+
+namespace StudentSurveyBot.Bot.Abstractions;
 
 public interface IUserStateStore
 {

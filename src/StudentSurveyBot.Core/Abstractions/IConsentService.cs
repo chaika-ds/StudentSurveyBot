@@ -1,4 +1,4 @@
-namespace StudentSurveyBot.Core.Services;
+namespace StudentSurveyBot.Core.Abstractions;
 
 public interface IConsentService
 {

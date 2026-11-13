@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using StudentSurveyBot.Core.Abstractions;
 using StudentSurveyBot.Core.Entities;
-using StudentSurveyBot.Core.Services;
 
 namespace StudentSurveyBot.Data.Services;
 

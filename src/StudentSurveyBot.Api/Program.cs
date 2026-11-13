@@ -1,7 +1,10 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using StudentSurveyBot.Api.Configuration;
 using StudentSurveyBot.Bot;
+using StudentSurveyBot.Core;
+using StudentSurveyBot.Core.Entities;
 using StudentSurveyBot.Core.Services;
 using StudentSurveyBot.Data;
 using Telegram.Bot;
@@ -9,25 +12,8 @@ using Telegram.Bot;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
-
-builder.Host.UseSerilog((context, services, loggerConfiguration) =>
-{
-    loggerConfiguration
-        .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .WriteTo.Console();
-
-    if (!string.IsNullOrWhiteSpace(context.Configuration["Seq:Url"]))
-    {
-        loggerConfiguration.WriteTo.Seq(context.Configuration["Seq:Url"]!);
-    }
-
-    loggerConfiguration.WriteTo.File(
-        path: Path.Combine(AppContext.BaseDirectory, "logs", "student-bot-.log"),
-        rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7);
-});
+    
+SerilogConfiguration.Configure(builder);
 
 builder.Services.Configure<BotOptions>(builder.Configuration.GetSection("Bot"));
 
@@ -44,17 +30,17 @@ builder.Services.AddHostedService<TelegramPollingService>();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
+//using (var scope = app.Services.CreateScope())
+//{
+//    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+//    await dbContext.Database.MigrateAsync();
 
-    var interestSeed = scope.ServiceProvider.GetRequiredService<InterestSeed>();
-    await interestSeed.SeedAsync();
+//    var interestSeed = scope.ServiceProvider.GetRequiredService<InterestSeed>();
+//    await interestSeed.SeedAsync();
 
-    var communitySeed = scope.ServiceProvider.GetRequiredService<CommunitySeed>();
-    await communitySeed.SeedAsync();
-}
+//    var communitySeed = scope.ServiceProvider.GetRequiredService<CommunitySeed>();
+//    await communitySeed.SeedAsync();
+//}
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 

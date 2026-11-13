@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StudentSurveyBot.Core.Entities;
 
-namespace StudentSurveyBot.Data;
+namespace StudentSurveyBot.Data.Seed;
 
 public sealed class CommunitySeed
 {

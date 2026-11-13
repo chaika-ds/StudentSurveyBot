@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StudentSurveyBot.Core.Entities;
 
-namespace StudentSurveyBot.Data;
+namespace StudentSurveyBot.Data.Seed;
 
 public sealed class InterestSeed
 {
@@ -29,7 +29,7 @@ public sealed class InterestSeed
 
         foreach (var interest in interests)
         {
-            if (!await _dbContext.Interests.AnyAsync(x => x.Code == interest.Code, cancellationToken))
+                if (!await _dbContext.Interests.AnyAsync(x => x.Code == interest.Code, cancellationToken))
             {
                 _dbContext.Interests.Add(interest);
             }
