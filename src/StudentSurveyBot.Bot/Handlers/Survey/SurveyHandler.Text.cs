@@ -90,23 +90,15 @@ public class SurveyTextHandler : SurveyHandlerBase
 
         await SendMessageAsync(
             chatId,
-            "Направление: выбери вариант или напиши своё.",
+            "Выберите курс:",
+            new InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton.WithCallbackData("1 курс", "course:1")],
+                [InlineKeyboardButton.WithCallbackData("2 курс", "course:2")],
+                [InlineKeyboardButton.WithCallbackData("3 курс", "course:3")],
+                [InlineKeyboardButton.WithCallbackData("4 курс", "course:4")]
+            ]),
             cancellationToken);
-
-        foreach (var group in StudyDirectionCatalog.Groups)
-        {
-            var keyboard = new InlineKeyboardMarkup(
-                group.Directions.Select(direction =>
-                    new[] { InlineKeyboardButton.WithCallbackData(
-                        direction.DisplayName,
-                        $"direction:{direction.Key}") }));
-
-            await SendMessageAsync(
-                chatId,
-                group.Name,
-                keyboard,
-                cancellationToken);
-        }
 
         return true;
     }

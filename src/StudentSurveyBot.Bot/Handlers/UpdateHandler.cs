@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Collections.Frozen;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -7,31 +8,21 @@ namespace StudentSurveyBot.Bot.Handlers;
 
 public sealed class UpdateHandler
 {
-    private readonly StartCommandHandler _startCommandHandler;
-    private readonly SurveyTextHandler _surveyTextHandler;
-    private readonly SurveyCallbackHandler _surveyCallbackHandler;
-    private readonly AdminHandler _adminHandler;
-    private readonly MatchingHandler _matchingHandler;
+    private readonly FrozenDictionary<string, IUpdateStrategy> _strategies;
     private readonly IChatRequestSynchronizer _requestSynchronizer;
 
     public UpdateHandler(
-        StartCommandHandler startCommandHandler,
-        SurveyTextHandler surveyTextHandler,
-        SurveyCallbackHandler surveyCallbackHandler,
-        AdminHandler adminHandler,
-        MatchingHandler matchingHandler,
+        IEnumerable<IUpdateStrategy> strategies,
         IChatRequestSynchronizer requestSynchronizer)
     {
-        _startCommandHandler = startCommandHandler;
-        _surveyTextHandler = surveyTextHandler;
-        _surveyCallbackHandler = surveyCallbackHandler;
-        _adminHandler = adminHandler;
-        _matchingHandler = matchingHandler;
+        _strategies = strategies
+            .SelectMany(strategy => strategy.Keys.Select(key => new { key, strategy }))
+            .ToFrozenDictionary(item => item.key, item => item.strategy);
         _requestSynchronizer = requestSynchronizer;
     }
 
     public async Task HandleAsync(
-        ITelegramBotClient botClient,
+        ITelegramBotClient _,
         Update update,
         CancellationToken cancellationToken)
     {
@@ -52,62 +43,47 @@ public sealed class UpdateHandler
         Update update,
         CancellationToken cancellationToken)
     {
-        if (update.Type == UpdateType.Message &&
-            update.Message is not null &&
-            update.Message.Text is not null)
+        if (_strategies.TryGetValue(GetStrategyKey(update), out var strategy) &&
+            strategy.CanHandle(update))
         {
-            var message = update.Message;
+            await strategy.HandleAsync(update, cancellationToken);
+        }
+    }
 
-            if (message.Text.StartsWith(
-                    "/start",
-                    StringComparison.Ordinal))
-            {
-                await _startCommandHandler.HandleAsync(
-                    message,
-                    cancellationToken);
-
-                return;
-            }
-
-            if (message.Text.StartsWith(
-                    "/export",
-                    StringComparison.Ordinal) ||
-                message.Text.StartsWith(
-                    "/stats",
-                    StringComparison.Ordinal))
-            {
-                await _adminHandler.HandleAsync(
-                    message,
-                    cancellationToken);
-
-                return;
-            }
-
-            if (message.Text.StartsWith(
-                    "/match",
-                    StringComparison.Ordinal))
-            {
-                await _matchingHandler.HandleAsync(
-                    message,
-                    cancellationToken);
-
-                return;
-            }
-
-            await _surveyTextHandler.HandleAsync(
-                message,
-                cancellationToken);
-
-            return;
+    private static string GetStrategyKey(Update update)
+    {
+        if (update.Type == UpdateType.CallbackQuery)
+        {
+            return UpdateStrategyKeys.Callback;
         }
 
-        if (update.Type == UpdateType.CallbackQuery &&
-            update.CallbackQuery is not null)
+        if (update.Type != UpdateType.Message ||
+            update.Message?.Text is not { } text)
         {
-            await _surveyCallbackHandler.HandleAsync(
-                update.CallbackQuery,
-                cancellationToken);
+            return string.Empty;
         }
+
+        if (text.StartsWith("/start", StringComparison.Ordinal))
+        {
+            return UpdateStrategyKeys.Start;
+        }
+
+        if (text.StartsWith("/export", StringComparison.Ordinal))
+        {
+            return UpdateStrategyKeys.Export;
+        }
+
+        if (text.StartsWith("/stats", StringComparison.Ordinal))
+        {
+            return UpdateStrategyKeys.Stats;
+        }
+
+        if (text.StartsWith("/match", StringComparison.Ordinal))
+        {
+            return UpdateStrategyKeys.Match;
+        }
+
+        return UpdateStrategyKeys.Message;
     }
 
     private static long? GetChatId(Update update)

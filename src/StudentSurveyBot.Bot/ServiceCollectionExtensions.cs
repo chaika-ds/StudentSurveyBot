@@ -13,6 +13,11 @@ public static class BotServiceCollectionExtensions
         services.AddSingleton<IUserStateStore, InMemoryUserStateStore>();
         services.AddSingleton<IChatRequestSynchronizer, ChatRequestSynchronizer>();
         services.AddSingleton<UpdateHandler>();
+        services.AddSingleton<IUpdateStrategy, StartCommandStrategy>();
+        services.AddSingleton<IUpdateStrategy, AdminCommandStrategy>();
+        services.AddSingleton<IUpdateStrategy, MatchingCommandStrategy>();
+        services.AddSingleton<IUpdateStrategy, SurveyCallbackStrategy>();
+        services.AddSingleton<IUpdateStrategy, SurveyMessageStrategy>();
         services.AddSingleton<ExceptionHandlingMiddleware>();
         services.AddSingleton<StartCommandHandler>();
         services.AddSingleton<AdminHandler>();
