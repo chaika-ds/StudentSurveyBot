@@ -1,7 +1,7 @@
-using StudentSurveyBot.Bot.States;
 using Telegram.Bot.Types;
+using StudentSurveyBot.Bot.States;
 
-namespace StudentSurveyBot.Bot.Handlers;
+namespace StudentSurveyBot.Bot.Abstractions;
 
 public interface ISurveyCallbackStrategy
 {

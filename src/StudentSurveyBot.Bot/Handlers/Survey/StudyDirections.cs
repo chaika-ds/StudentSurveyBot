@@ -1,4 +1,4 @@
-namespace StudentSurveyBot.Bot.Handlers;
+namespace StudentSurveyBot.Bot.Handlers.Survey;
 
 public sealed record StudyDirection(string Key, string Code, string Name)
 {

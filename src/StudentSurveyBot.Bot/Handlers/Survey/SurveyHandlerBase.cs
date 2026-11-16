@@ -6,7 +6,7 @@ using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace StudentSurveyBot.Bot.Handlers;
+namespace StudentSurveyBot.Bot.Handlers.Survey;
 
 public abstract class SurveyHandlerBase
 {

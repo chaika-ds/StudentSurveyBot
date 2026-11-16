@@ -1,4 +1,4 @@
-namespace StudentSurveyBot.Bot.Handlers;
+namespace StudentSurveyBot.Bot.Handlers.Survey;
 
 public enum SurveyCallbackKey
 {
@@ -11,5 +11,8 @@ public enum SurveyCallbackKey
     SocialFrequency = 6,
     SocialTime = 7,
     Course = 8,
-    Consent = 9
+    Consent = 9,
+    Budget = 10,
+    TelegramNick = 11,
+    SpecialWishes = 12
 }

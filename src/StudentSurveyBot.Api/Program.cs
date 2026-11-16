@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.Extensions.DependencyInjection;
 using StudentSurveyBot.Api.Configuration;
 using StudentSurveyBot.Bot;
 using StudentSurveyBot.Core;
@@ -24,7 +25,9 @@ builder.Services.AddCoreServices();
 builder.Services.AddDataServices(builder.Configuration);
 builder.Services.AddBotServices();
 
-builder.Services.AddValidatorsFromAssembly(typeof(StudentSurveyBot.Core.Validators.FullNameValidator).Assembly);
+builder.Services.AddValidatorsFromAssembly(
+    typeof(StudentSurveyBot.Core.Validators.FullNameValidator).Assembly,
+    ServiceLifetime.Singleton);
 
 builder.Services.AddHostedService<TelegramPollingService>();
 

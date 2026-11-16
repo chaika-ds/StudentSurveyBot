@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 
 namespace StudentSurveyBot.Bot;
 
+using StudentSurveyBot.Bot.Abstractions;
+
 public class ChatRequestSynchronizer : IChatRequestSynchronizer
 {
     private readonly ConcurrentDictionary<long, SemaphoreSlim> _semaphores = new();

@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Logging;
 using StudentSurveyBot.Bot.Extensions;
+using StudentSurveyBot.Bot.Handlers;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace StudentSurveyBot.Bot.Handlers;
+namespace StudentSurveyBot.Bot.Middleware;
 
 public sealed class ExceptionHandlingMiddleware
 {

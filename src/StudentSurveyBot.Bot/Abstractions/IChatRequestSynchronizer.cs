@@ -1,4 +1,4 @@
-namespace StudentSurveyBot.Bot;
+namespace StudentSurveyBot.Bot.Abstractions;
 
 public interface IChatRequestSynchronizer
 {

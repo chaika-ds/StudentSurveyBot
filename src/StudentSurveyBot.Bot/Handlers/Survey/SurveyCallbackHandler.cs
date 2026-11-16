@@ -6,7 +6,7 @@ using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace StudentSurveyBot.Bot.Handlers;
+namespace StudentSurveyBot.Bot.Handlers.Survey;
 
 public class SurveyCallbackHandler : SurveyHandlerBase
 {
@@ -20,8 +20,11 @@ public class SurveyCallbackHandler : SurveyHandlerBase
             ["social-size"] = SurveyCallbackKey.SocialSize,
             ["social-frequency"] = SurveyCallbackKey.SocialFrequency,
             ["social-time"] = SurveyCallbackKey.SocialTime,
+            ["budget"] = SurveyCallbackKey.Budget,
             ["course"] = SurveyCallbackKey.Course,
-            ["consent"] = SurveyCallbackKey.Consent
+            ["consent"] = SurveyCallbackKey.Consent,
+            ["telegram-nick"] = SurveyCallbackKey.TelegramNick,
+            ["special-wishes"] = SurveyCallbackKey.SpecialWishes
         }.ToFrozenDictionary();
 
     private readonly FrozenDictionary<SurveyCallbackKey, ISurveyCallbackStrategy> _strategies;
@@ -40,8 +43,11 @@ public class SurveyCallbackHandler : SurveyHandlerBase
             [SurveyCallbackKey.SocialSize] = new SurveyCallbackHandlerStrategy(HandleSocialProfileAsync),
             [SurveyCallbackKey.SocialFrequency] = new SurveyCallbackHandlerStrategy(HandleSocialProfileAsync),
             [SurveyCallbackKey.SocialTime] = new SurveyCallbackHandlerStrategy(HandleSocialProfileAsync),
+            [SurveyCallbackKey.Budget] = new SurveyCallbackHandlerStrategy(HandleBudgetAsync),
             [SurveyCallbackKey.Course] = new SurveyCallbackHandlerStrategy(HandleCourseAsync),
-            [SurveyCallbackKey.Consent] = new SurveyCallbackHandlerStrategy(HandleConsentAsync)
+            [SurveyCallbackKey.Consent] = new SurveyCallbackHandlerStrategy(HandleConsentAsync),
+            [SurveyCallbackKey.TelegramNick] = new SurveyCallbackHandlerStrategy(HandleTelegramNickAsync),
+            [SurveyCallbackKey.SpecialWishes] = new SurveyCallbackHandlerStrategy(HandleSpecialWishesAsync)
         }.ToFrozenDictionary();
     }
 
@@ -171,10 +177,10 @@ public class SurveyCallbackHandler : SurveyHandlerBase
                 "Желаемый вайб:",
                 new InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton.WithCallbackData("Познакомиться с людьми", "interest-vibe:meet-people")],
-                    [InlineKeyboardButton.WithCallbackData("Получить впечатления", "interest-vibe:impressions")],
-                    [InlineKeyboardButton.WithCallbackData("Пообщаться и обсудить интересы", "interest-vibe:discuss")],
-                    [InlineKeyboardButton.WithCallbackData("Просто провести время", "interest-vibe:just-go-out")]
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.DesiredVibes["meet-people"], "interest-vibe:meet-people")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.DesiredVibes["impressions"], "interest-vibe:impressions")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.DesiredVibes["discuss"], "interest-vibe:discuss")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.DesiredVibes["just-go-out"], "interest-vibe:just-go-out")]
                 ]),
                 cancellationToken);
 
@@ -227,25 +233,12 @@ public class SurveyCallbackHandler : SurveyHandlerBase
     private static InlineKeyboardMarkup BuildInterestKeyboard(
         IReadOnlyCollection<int> selectedInterestIds)
     {
-        var interests = new[]
-        {
-            (Id: 1, Label: "Театр"),
-            (Id: 2, Label: "Выставки и музеи"),
-            (Id: 3, Label: "Кино"),
-            (Id: 4, Label: "Концерты"),
-            (Id: 5, Label: "Экскурсии и прогулки"),
-            (Id: 6, Label: "Природа и активный отдых"),
-            (Id: 7, Label: "Конференции"),
-            (Id: 8, Label: "Спортивные мероприятия"),
-            (Id: 9, Label: "Проектная деятельность")
-        };
-
-        var rows = interests
+        var rows = SurveyInterestCatalog.Labels
             .Select(interest => new[]
             {
                 InlineKeyboardButton.WithCallbackData(
-                    $"{(selectedInterestIds.Contains(interest.Id) ? "✅" : "☐")} {interest.Label}",
-                    $"interest:{interest.Id}")
+                    $"{(selectedInterestIds.Contains(interest.Key) ? "✅" : "☐")} {interest.Value}",
+                    $"interest:{interest.Key}")
             })
             .Append(new[]
             {
@@ -282,9 +275,9 @@ public class SurveyCallbackHandler : SurveyHandlerBase
             "Социальный профиль:\n\nСтиль знакомства:",
             new InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton.WithCallbackData("Легко знакомлюсь", "social-style:easy")],
-                [InlineKeyboardButton.WithCallbackData("Мне нужно время", "social-style:need-time")],
-                [InlineKeyboardButton.WithCallbackData("Стесняюсь, но хочу знакомиться", "social-style:shy")]
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.ContactStyles["easy"], "social-style:easy")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.ContactStyles["need-time"], "social-style:need-time")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.ContactStyles["shy"], "social-style:shy")]
             ]),
             cancellationToken);
 
@@ -309,10 +302,10 @@ public class SurveyCallbackHandler : SurveyHandlerBase
                 "Размер компании:",
                 new InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton.WithCallbackData("1–2 человека", "social-size:one-two")],
-                    [InlineKeyboardButton.WithCallbackData("3–5 человек", "social-size:three-five")],
-                    [InlineKeyboardButton.WithCallbackData("Большая компания", "social-size:large")],
-                    [InlineKeyboardButton.WithCallbackData("Не имеет значения", "social-size:unknown")]
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.GroupSizes["one-two"], "social-size:one-two")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.GroupSizes["three-five"], "social-size:three-five")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.GroupSizes["large"], "social-size:large")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.GroupSizes["unknown"], "social-size:unknown")]
                 ]),
                 cancellationToken);
             return true;
@@ -329,10 +322,10 @@ public class SurveyCallbackHandler : SurveyHandlerBase
                 "Регулярность походов на мероприятия:",
                 new InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton.WithCallbackData("Каждую неделю", "social-frequency:weekly")],
-                    [InlineKeyboardButton.WithCallbackData("2–3 раза в неделю", "social-frequency:two-three-weekly")],
-                    [InlineKeyboardButton.WithCallbackData("Раз в месяц", "social-frequency:monthly")],
-                    [InlineKeyboardButton.WithCallbackData("По настроению", "social-frequency:by-mood")]
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.VisitFrequencies["weekly"], "social-frequency:weekly")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.VisitFrequencies["two-three-weekly"], "social-frequency:two-three-weekly")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.VisitFrequencies["monthly"], "social-frequency:monthly")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.VisitFrequencies["by-mood"], "social-frequency:by-mood")]
                 ]),
                 cancellationToken);
             return true;
@@ -349,10 +342,10 @@ public class SurveyCallbackHandler : SurveyHandlerBase
                 "Удобное время:",
                 new InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton.WithCallbackData("Будни днём", "social-time:weekday-day")],
-                    [InlineKeyboardButton.WithCallbackData("Будни вечером", "social-time:weekday-evening")],
-                    [InlineKeyboardButton.WithCallbackData("Выходные днём", "social-time:weekend-day")],
-                    [InlineKeyboardButton.WithCallbackData("Выходные вечером", "social-time:weekend-evening")]
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.PreferredTimes["weekday-day"], "social-time:weekday-day")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.PreferredTimes["weekday-evening"], "social-time:weekday-evening")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.PreferredTimes["weekend-day"], "social-time:weekend-day")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.PreferredTimes["weekend-evening"], "social-time:weekend-evening")]
                 ]),
                 cancellationToken);
             return true;
@@ -367,13 +360,55 @@ public class SurveyCallbackHandler : SurveyHandlerBase
                 callbackQuery,
                 chatId,
                 "Удобное время сохранено.",
-                "Социальный профиль заполнен.",
-                replyMarkup: null,
+                "Логистика и бюджет:\n\nБюджет на одно мероприятие:",
+                new InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.Budgets["free"], "budget:free")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.Budgets["up-to-500"], "budget:up-to-500")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.Budgets["500-1500"], "budget:500-1500")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.Budgets["1500-3000"], "budget:1500-3000")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.Budgets["up-to-5000"], "budget:up-to-5000")],
+                    [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.Budgets["unlimited"], "budget:unlimited")]
+                ]),
                 cancellationToken: cancellationToken);
             return true;
         }
 
         return false;
+    }
+
+    private async Task<bool> HandleBudgetAsync(
+        CallbackQuery callbackQuery,
+        string data,
+        SurveyState state,
+        long chatId,
+        CancellationToken cancellationToken)
+    {
+        const string prefix = "budget:";
+
+        if (!data.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        state.Budget = data[prefix.Length..];
+        state.CurrentStep = SurveyStep.Wishes;
+        await SaveStateAsync(chatId, state, cancellationToken);
+
+        await AnswerAndSendAsync(
+            callbackQuery,
+            chatId,
+            "Бюджет сохранён.",
+            "Особые пожелания:\n\nНапишите ваши пожелания одним сообщением или отправьте «нет».",
+                new InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton.WithCallbackData(
+                        "Нет",
+                        "special-wishes:no")]
+                ]),
+            cancellationToken: cancellationToken);
+
+        return true;
     }
 
     private async Task AnswerAndSendAsync(
@@ -465,7 +500,14 @@ public class SurveyCallbackHandler : SurveyHandlerBase
 
             await SendMessageAsync(
                 chatId,
-                "Введите Telegram username или @username. Можно пропустить.",
+                "Ссылка на ник в Telegram:\n\n" +
+                "Введите username или @username. Можно пропустить.",
+                new InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton.WithCallbackData(
+                        "Пропустить",
+                        "telegram-nick:skip")]
+                ]),
                 cancellationToken);
 
             return true;
@@ -487,5 +529,78 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         }
 
         return false;
+    }
+
+    private async Task<bool> HandleSpecialWishesAsync(
+        CallbackQuery callbackQuery,
+        string data,
+        SurveyState state,
+        long chatId,
+        CancellationToken cancellationToken)
+    {
+        if (!data.Equals("special-wishes:no", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        state.SpecialWishes = null;
+        state.CurrentStep = SurveyStep.Consent;
+
+        await SaveStateAsync(chatId, state, cancellationToken);
+
+        await BotClient.AnswerCallbackQuery(
+            callbackQuery.Id,
+            "Пожелания пропущены.",
+            cancellationToken: cancellationToken);
+
+        await SendMessageAsync(
+            chatId,
+            SurveySummaryFormatter.Build(state),
+            cancellationToken);
+
+        await SendMessageAsync(
+            chatId,
+            "Согласие на обработку персональных данных:",
+            new InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton.WithCallbackData("Согласен", "consent:yes")],
+                [InlineKeyboardButton.WithCallbackData("Не согласен", "consent:no")]
+            ]),
+            cancellationToken);
+
+        return true;
+    }
+
+    private async Task<bool> HandleTelegramNickAsync(
+        CallbackQuery callbackQuery,
+        string data,
+        SurveyState state,
+        long chatId,
+        CancellationToken cancellationToken)
+    {
+        if (!data.Equals("telegram-nick:skip", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        state.ContactTelegramNick = null;
+        state.CurrentStep = SurveyStep.Thanks;
+
+        await SaveStateAsync(chatId, state, cancellationToken);
+
+        await BotClient.AnswerCallbackQuery(
+            callbackQuery.Id,
+            "Шаг пропущен.",
+            cancellationToken: cancellationToken);
+
+        await SendMessageAsync(
+            chatId,
+            $"Спасибо за регистрацию, {state.FullName}!\n\n" +
+            $"Краткая сводка: {state.FullName} / " +
+            $"{state.Direction ?? "не указано"} / " +
+            $"{state.Course ?? "не указан"}.",
+            cancellationToken);
+
+        return true;
     }
 }

@@ -1,7 +1,8 @@
 using StudentSurveyBot.Bot.States;
+using StudentSurveyBot.Bot.Abstractions;
 using Telegram.Bot.Types;
 
-namespace StudentSurveyBot.Bot.Handlers;
+namespace StudentSurveyBot.Bot.Handlers.Survey;
 
 public sealed class SurveyCallbackHandlerStrategy : ISurveyCallbackStrategy
 {

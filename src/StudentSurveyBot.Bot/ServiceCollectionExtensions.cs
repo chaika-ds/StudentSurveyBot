@@ -1,8 +1,13 @@
+using System.Collections.Frozen;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using StudentSurveyBot.Bot.Abstractions;
 using StudentSurveyBot.Bot.Handlers;
+using StudentSurveyBot.Bot.Handlers.Survey;
+using StudentSurveyBot.Bot.Middleware;
+using StudentSurveyBot.Bot.States;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace StudentSurveyBot.Bot;
 
@@ -25,6 +30,12 @@ public static class BotServiceCollectionExtensions
         services.AddSingleton<BotOptions>();
         services.AddSingleton<SurveyTextHandler>();
         services.AddSingleton<SurveyCallbackHandler>();
+
+        services.AddSingleton<
+            FrozenDictionary<
+                SurveyStep,
+                Func<SurveyTextHandler, Message, SurveyState, long, CancellationToken, Task<bool>>[]>>(
+            _ => SurveyTextHandler.CreateStepHandlers());
         return services;
     }
 }
