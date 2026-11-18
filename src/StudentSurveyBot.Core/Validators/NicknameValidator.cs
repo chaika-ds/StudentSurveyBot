@@ -7,7 +7,8 @@ public sealed class NicknameValidator : AbstractValidator<string?>
 {
     private static readonly Regex TelegramNicknameRegex = new(
         "^(?:@?[A-Za-z][A-Za-z0-9_]{3,31}|(?:https?://)?(?:www\\.)?(?:t\\.me|telegram\\.me)/[A-Za-z][A-Za-z0-9_]{3,31}/?)$",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
+        TimeSpan.FromMilliseconds(100));
 
     public NicknameValidator()
     {

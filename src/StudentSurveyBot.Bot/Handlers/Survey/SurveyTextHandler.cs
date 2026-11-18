@@ -15,7 +15,8 @@ public class SurveyTextHandler : SurveyHandlerBase
 {
     private static readonly Regex FullNameRegex = new(
         "^[A-Za-zА-Яа-яЁё\\s-]{2,120}$",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        RegexOptions.Compiled | RegexOptions.CultureInvariant,
+        TimeSpan.FromMilliseconds(100));
 
     private readonly IValidator<string?> _nicknameValidator;
     private readonly FrozenDictionary<
