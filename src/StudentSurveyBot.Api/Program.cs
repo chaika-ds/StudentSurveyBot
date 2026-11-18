@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using StudentSurveyBot.Api.Configuration;
 using StudentSurveyBot.Bot;
 using StudentSurveyBot.Core;
@@ -10,28 +11,35 @@ using StudentSurveyBot.Core.Services;
 using StudentSurveyBot.Data;
 using Telegram.Bot;
 
-var builder = WebApplication.CreateBuilder(args);
+using var fallbackLoggerFactory = LoggerFactory.Create(logging => logging.AddConsole());
+var fallbackLogger = fallbackLoggerFactory.CreateLogger("StudentSurveyBot.Api");
+ILogger? applicationLogger = null;
 
-builder.Logging.ClearProviders();
-    
-SerilogConfiguration.Configure(builder);
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<BotOptions>(builder.Configuration.GetSection("Bot"));
+    builder.Logging.ClearProviders();
 
-builder.Services.AddSingleton<ITelegramBotClient>(_ =>
-    new TelegramBotClient(builder.Configuration["Bot:Token"] ?? throw new InvalidOperationException("Bot:Token is not configured.")));
+    SerilogConfiguration.Configure(builder);
 
-builder.Services.AddCoreServices();
-builder.Services.AddDataServices(builder.Configuration);
-builder.Services.AddBotServices();
+    builder.Services.Configure<BotOptions>(builder.Configuration.GetSection("Bot"));
 
-builder.Services.AddValidatorsFromAssembly(
-    typeof(StudentSurveyBot.Core.Validators.FullNameValidator).Assembly,
-    ServiceLifetime.Singleton);
+    builder.Services.AddSingleton<ITelegramBotClient>(_ =>
+        new TelegramBotClient(builder.Configuration["Bot:Token"] ?? throw new InvalidOperationException("Bot:Token is not configured.")));
 
-builder.Services.AddHostedService<TelegramPollingService>();
+    builder.Services.AddCoreServices();
+    builder.Services.AddDataServices(builder.Configuration);
+    builder.Services.AddBotServices();
 
-var app = builder.Build();
+    builder.Services.AddValidatorsFromAssembly(
+        typeof(StudentSurveyBot.Core.Validators.FullNameValidator).Assembly,
+        ServiceLifetime.Singleton);
+
+    builder.Services.AddHostedService<TelegramPollingService>();
+
+    var app = builder.Build();
+    applicationLogger = app.Logger;
 
 //using (var scope = app.Services.CreateScope())
 //{
@@ -45,6 +53,19 @@ var app = builder.Build();
 //    await communitySeed.SeedAsync();
 //}
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+    app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-await app.RunAsync();
+    await app.RunAsync();
+}
+catch (Exception exception)
+{
+    (applicationLogger ?? fallbackLogger).LogError(
+        exception,
+        "Ошибка при запуске приложения.");
+    Environment.ExitCode = 1;
+}
+finally
+{
+    (applicationLogger ?? fallbackLogger).LogInformation(
+        "Процесс приложения завершён.");
+}

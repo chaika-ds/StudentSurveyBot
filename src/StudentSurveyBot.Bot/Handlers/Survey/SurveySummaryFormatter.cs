@@ -28,7 +28,9 @@ internal static class SurveySummaryFormatter
         string.IsNullOrWhiteSpace(value) ? "не указано" : value;
 
     private static string GetCourseLabel(string? course) =>
-        string.IsNullOrWhiteSpace(course) ? "не указан" : $"{course} курс";
+        course is not null && SurveyCourseCatalog.Labels.TryGetValue(course, out var label)
+            ? label
+            : "не указан";
 
     private static string GetInterestLabel(int interestId)
     {

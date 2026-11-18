@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
-using StudentSurveyBot.Bot.Abstractions;
 using System.Collections.Frozen;
+using StudentSurveyBot.Bot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -13,12 +13,10 @@ public sealed class UpdateHandler
     private readonly IChatRequestSynchronizer _requestSynchronizer;
 
     public UpdateHandler(
-        IEnumerable<IUpdateStrategy> strategies,
+        FrozenDictionary<string, IUpdateStrategy> strategies,
         IChatRequestSynchronizer requestSynchronizer)
     {
-        _strategies = strategies
-            .SelectMany(strategy => strategy.Keys.Select(key => new { key, strategy }))
-            .ToFrozenDictionary(item => item.key, item => item.strategy);
+        _strategies = strategies;
         _requestSynchronizer = requestSynchronizer;
     }
 

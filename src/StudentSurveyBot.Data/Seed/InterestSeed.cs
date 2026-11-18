@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using StudentSurveyBot.Core.Entities;
+using StudentSurveyBot.Core.Catalogs;
 
 namespace StudentSurveyBot.Data.Seed;
 
@@ -14,24 +15,18 @@ public sealed class InterestSeed
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
-        var interests = new[]
+        foreach (var definition in InterestCatalog.Definitions)
         {
-            new Interest { Code = "theater", Label = "Театр" },
-            new Interest { Code = "exhibitions_museums", Label = "Выставки и музеи" },
-            new Interest { Code = "cinema", Label = "Кино" },
-            new Interest { Code = "concerts", Label = "Концерты" },
-            new Interest { Code = "excursions", Label = "Экскурсии и городские прогулки" },
-            new Interest { Code = "nature_active", Label = "Природа и активный отдых" },
-            new Interest { Code = "conferences", Label = "Конференции" },
-            new Interest { Code = "sports", Label = "Спортивные мероприятия" },
-            new Interest { Code = "project_activity", Label = "Проектная деятельность" }
-        };
-
-        foreach (var interest in interests)
-        {
-                if (!await _dbContext.Interests.AnyAsync(x => x.Code == interest.Code, cancellationToken))
+            if (!await _dbContext.Interests.AnyAsync(
+                    x => x.Code == definition.Code,
+                    cancellationToken))
             {
-                _dbContext.Interests.Add(interest);
+                _dbContext.Interests.Add(new Interest
+                {
+                    Id = definition.Id,
+                    Code = definition.Code,
+                    Label = definition.Label
+                });
             }
         }
 

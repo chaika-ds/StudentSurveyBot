@@ -1,6 +1,8 @@
 using System.Collections.Frozen;
 using StudentSurveyBot.Bot.Abstractions;
+using StudentSurveyBot.Bot.Handlers.Survey.FrozenDictionaries;
 using StudentSurveyBot.Bot.States;
+using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
@@ -10,45 +12,15 @@ namespace StudentSurveyBot.Bot.Handlers.Survey;
 
 public class SurveyCallbackHandler : SurveyHandlerBase
 {
-    private static readonly FrozenDictionary<string, SurveyCallbackKey> CallbackKeys =
-        new Dictionary<string, SurveyCallbackKey>
-        {
-            ["direction"] = SurveyCallbackKey.Direction,
-            ["interest"] = SurveyCallbackKey.Interest,
-            ["interest-vibe"] = SurveyCallbackKey.InterestVibe,
-            ["social-style"] = SurveyCallbackKey.SocialStyle,
-            ["social-size"] = SurveyCallbackKey.SocialSize,
-            ["social-frequency"] = SurveyCallbackKey.SocialFrequency,
-            ["social-time"] = SurveyCallbackKey.SocialTime,
-            ["budget"] = SurveyCallbackKey.Budget,
-            ["course"] = SurveyCallbackKey.Course,
-            ["consent"] = SurveyCallbackKey.Consent,
-            ["telegram-nick"] = SurveyCallbackKey.TelegramNick,
-            ["special-wishes"] = SurveyCallbackKey.SpecialWishes
-        }.ToFrozenDictionary();
-
     private readonly FrozenDictionary<SurveyCallbackKey, ISurveyCallbackStrategy> _strategies;
 
     public SurveyCallbackHandler(
         ITelegramBotClient botClient,
-        IUserStateStore userStateStore)
-        : base(botClient, userStateStore)
+        IUserStateStore userStateStore,
+        IServiceScopeFactory scopeFactory)
+        : base(botClient, userStateStore, scopeFactory)
     {
-        _strategies = new Dictionary<SurveyCallbackKey, ISurveyCallbackStrategy>
-        {
-            [SurveyCallbackKey.Direction] = new SurveyCallbackHandlerStrategy(HandleDirectionAsync),
-            [SurveyCallbackKey.Interest] = new SurveyCallbackHandlerStrategy(HandleInterestSelectionAsync),
-            [SurveyCallbackKey.InterestVibe] = new SurveyCallbackHandlerStrategy(HandleInterestFormAsync),
-            [SurveyCallbackKey.SocialStyle] = new SurveyCallbackHandlerStrategy(HandleSocialProfileAsync),
-            [SurveyCallbackKey.SocialSize] = new SurveyCallbackHandlerStrategy(HandleSocialProfileAsync),
-            [SurveyCallbackKey.SocialFrequency] = new SurveyCallbackHandlerStrategy(HandleSocialProfileAsync),
-            [SurveyCallbackKey.SocialTime] = new SurveyCallbackHandlerStrategy(HandleSocialProfileAsync),
-            [SurveyCallbackKey.Budget] = new SurveyCallbackHandlerStrategy(HandleBudgetAsync),
-            [SurveyCallbackKey.Course] = new SurveyCallbackHandlerStrategy(HandleCourseAsync),
-            [SurveyCallbackKey.Consent] = new SurveyCallbackHandlerStrategy(HandleConsentAsync),
-            [SurveyCallbackKey.TelegramNick] = new SurveyCallbackHandlerStrategy(HandleTelegramNickAsync),
-            [SurveyCallbackKey.SpecialWishes] = new SurveyCallbackHandlerStrategy(HandleSpecialWishesAsync)
-        }.ToFrozenDictionary();
+        _strategies = SurveyCallbackStrategies.Create(this);
     }
 
     public async Task HandleAsync(
@@ -89,7 +61,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         var separatorIndex = data.IndexOf(':');
 
         if (separatorIndex <= 0 ||
-            !CallbackKeys.TryGetValue(data[..separatorIndex], out var key))
+            !SurveyCallbackKeys.Values.TryGetValue(data[..separatorIndex], out var key))
         {
             return SurveyCallbackKey.Unknown;
         }
@@ -97,7 +69,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         return key;
     }
 
-    private async Task<bool> HandleDirectionAsync(
+    internal async Task<bool> HandleDirectionAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -147,7 +119,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         return true;
     }
 
-    private async Task<bool> HandleInterestSelectionAsync(
+    internal async Task<bool> HandleInterestSelectionAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -248,7 +220,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         return new InlineKeyboardMarkup(rows);
     }
 
-    private async Task<bool> HandleInterestFormAsync(
+    internal async Task<bool> HandleInterestFormAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -284,7 +256,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         return true;
     }
 
-    private async Task<bool> HandleSocialProfileAsync(
+    internal async Task<bool> HandleSocialProfileAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -377,7 +349,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         return false;
     }
 
-    private async Task<bool> HandleBudgetAsync(
+    internal async Task<bool> HandleBudgetAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -431,7 +403,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
             cancellationToken);
     }
 
-    private async Task<bool> HandleCourseAsync(
+    internal async Task<bool> HandleCourseAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -481,7 +453,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         return true;
     }
 
-    private async Task<bool> HandleConsentAsync(
+    internal async Task<bool> HandleConsentAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -531,7 +503,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         return false;
     }
 
-    private async Task<bool> HandleSpecialWishesAsync(
+    internal async Task<bool> HandleSpecialWishesAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -571,7 +543,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         return true;
     }
 
-    private async Task<bool> HandleTelegramNickAsync(
+    internal async Task<bool> HandleTelegramNickSkipAsync(
         CallbackQuery callbackQuery,
         string data,
         SurveyState state,
@@ -587,6 +559,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
         state.CurrentStep = SurveyStep.Thanks;
 
         await SaveStateAsync(chatId, state, cancellationToken);
+        await CompleteRegistrationAsync(state, cancellationToken);
 
         await BotClient.AnswerCallbackQuery(
             callbackQuery.Id,

@@ -5,6 +5,8 @@ using StudentSurveyBot.Core.Abstractions;
 using StudentSurveyBot.Core.Services;
 using StudentSurveyBot.Data.Seed;
 using DataConsentService = StudentSurveyBot.Data.Services.ConsentService;
+using DataRegistrationService = StudentSurveyBot.Data.Services.RegistrationService;
+using DataStudentService = StudentSurveyBot.Data.Services.StudentService;
 
 namespace StudentSurveyBot.Data;
 
@@ -26,8 +28,9 @@ public static class DataServiceCollectionExtensions
                     npgsqlOptions.MigrationsAssembly(
                         "StudentSurveyBot.Migrations")));
 
-        services.AddScoped<IStudentService, StudentService>();
+        services.AddScoped<IStudentService, DataStudentService>();
         services.AddScoped<IConsentService, DataConsentService>();
+        services.AddScoped<IRegistrationService, DataRegistrationService>();
         services.AddScoped<InterestSeed>();
         services.AddScoped<CommunitySeed>();
 

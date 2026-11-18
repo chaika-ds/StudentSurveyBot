@@ -1,0 +1,233 @@
+# Copilot Instructions — Telegram Bot (C# / .NET)
+
+## 1. Общее описание проекта
+Telegram-бот на C# (.NET 8), библиотека Telegram.Bot, режим Long Polling.
+Разворачивается на Linux VPS (Ubuntu 22.04+) как systemd-служба.
+Деплой — только через GitHub Actions при push в `main`.
+Токен и секреты — только через переменные окружения.
+
+## 2. Технологический стек (фиксированный)
+| Слой | Технология | Ограничения |
+|---|---|---|
+| Runtime | .NET 8 (LTS) | Не предлагать .NET 9+ без запроса |
+| Язык | C# 12 | `nullable enable`, `implicit usings enable` |
+| Telegram | Telegram.Bot (последняя стабильная) | Только `ITelegramBotClient` + polling |
+| Хостинг | Generic Host (`Microsoft.Extensions.Hosting`) | `BackgroundService` для polling |
+| DI | `Microsoft.Extensions.DependencyInjection` | Без сторонних контейнеров |
+| Конфиг | `IOptions<T>` + env vars | `ValidateOnStart()` обязателен |
+| Логи | `Microsoft.Extensions.Logging` | Structured logging, без `Console.WriteLine` |
+| Retry | Polly | Только для внешних вызовов |
+| Тесты | xUnit + FluentAssertions + NSubstitute | Moq допустим, если уже в проекте |
+| CI/CD | GitHub Actions | `appleboy/scp-action`, `appleboy/ssh-action` |
+| Хостинг ОС | Ubuntu + systemd | Без Docker/K8s |
+
+**Добавление новой зависимости** допустимо только если:
+1. Она активно поддерживается (коммит за последние 6 месяцев).
+2. Лицензия MIT/Apache-2.0/BSD.
+3. Нет альтернативы в BCL или уже подключённых пакетах.
+4. Copilot обязан явно указать: имя пакета, версию, зачем, альтернативы.
+
+Новые папки — только после обсуждения. Не «распихивать» код по корню.
+
+## 4. Соглашения по коду
+
+### 4.1. Общие
+- Один публичный тип — один файл. Имя файла = имя типа.
+- Файлы ≤ 300 строк. Если больше — декомпозировать.
+- Методы ≤ 40 строк. Если больше — декомпозировать.
+- Максимальная цикломатическая сложность метода — 10.
+- Никаких `#region`. Никаких закомментированных блоков кода в PR.
+- Никаких `TODO` без номера issue: `// TODO(#123): ...`.
+
+### 4.2. Именование
+- Классы/методы/свойства — `PascalCase`.
+- Приватные поля — `_camelCase`.
+- Локальные переменные/параметры — `camelCase`.
+- Интерфейсы — `I` + `PascalCase`.
+- Асинхронные методы — суффикс `Async`.
+- Константы — `PascalCase` (не `SCREAMING_CASE`).
+- Идентификаторы — на английском. Комментарии/XML-doc/строки UI — на русском.
+
+### 4.3. Асинхронность
+- Все I/O — `async/await`. Запрещены `.Result`, `.Wait()`, `GetAwaiter().GetResult()`.
+- `CancellationToken` — обязательный последний параметр во всех async-методах,
+  которые могут выполняться дольше мгновения.
+- `ConfigureAwait(false)` — во всей библиотечной логике (не в обработчиках,
+  где нужен контекст).
+- `Task.Run` для I/O **не использовать** — только для CPU-bound.
+
+### 4.4. Nullable
+- `nullable enable` во всех проектах.
+- Оператор `!` — только с комментарием-обоснованием.
+- Публичные API не принимают `null` без явного `ArgumentNullException.ThrowIfNull`.
+
+### 4.5. Ресурсы
+- `HttpClient` — только через `IHttpClientFactory` (named clients).
+- `IDisposable`/`IAsyncDisposable` — освобождать через `using`/`await using`.
+- Файловые потоки — только внутри `using`.
+
+## 5. Архитектурные правила
+
+### 5.1. Слои
+- `Program.cs` — только composition root: DI, конфиг, хостинг. Никакой логики.
+- `PollingService` — получение апдейтов + передача в `UpdateDispatcher`.
+  Не содержит бизнес-логики.
+- `UpdateDispatcher` — маршрутизация по типу апдейта → соответствующий handler.
+- `Handlers` — вся бизнес-логика. Не знают про Telegram-транспорт напрямую,
+  работают через `ITelegramSender` (обёртка над `ITelegramBotClient`).
+- `Middleware` — сквозная логика (ошибки, рейт-лимит, метрики).
+
+### 5.2. Обработчики
+- Каждая команда/колбэк — отдельный класс, реализующий
+  `ICommandHandler`/`ICallbackHandler`.
+- Регистрация — через DI (`services.AddScoped<ICommandHandler, XHandler>()`
+  + резолв по ключу).
+- Внутри handler — никаких `try/catch` для логирования (это делает middleware).
+  Ловить только то, что можно обработать осмысленно.
+
+### 5.3. Запрещено
+- God-классы (`UpdateHandler` со всей логикой).
+- Статические сервисы/синглтоны с состоянием (кроме `ILogger`).
+- Циклические зависимости между проектами.
+- `ServiceLocator` (`serviceProvider.GetService` вне composition root).
+
+## 6. Обработка ошибок и устойчивость
+- Middleware верхнего уровня ловит **все** исключения в обработке апдейта,
+  логирует с `LogError(ex, ...)`, отвечает пользователю generic-сообщением.
+- Внешние вызовы Telegram API — через Polly:
+  - retry: 3 попытки, экспоненциальный backoff (1s, 2s, 4s) с jitter;
+  - timeout: 10s на запрос;
+  - circuit breaker: 5 ошибок за 30s → размыкание на 60s.
+- `OperationCanceledException` при shutdown — **не** логировать как ошибку.
+- Telegram API возвращает `RetryAfter` — уважать его, не спамить.
+- `429 Too Many Requests` — обязательная обработка.
+
+## 7. Конфигурация и секреты
+- Токен — только `TELEGRAM_BOT_TOKEN` из env. Никогда в коде/appsettings.
+- Все настройки — strongly-typed через `IOptions<BotConfiguration>`,
+  валидация через `ValidateDataAnnotations()` + `ValidateOnStart()`.
+- `.env` в `.gitignore`. На сервере — `/etc/mybot.env` (chmod 600).
+- В логах **никогда** не выводить: токен, полный объект `Update`,
+  содержимое `Message.Text` (PII), `chat_id` в открытом виде (маскировать).
+- Проверка секретов в CI: `gitleaks`/`trufflehog` (если подключены).
+
+## 8. Логирование и наблюдаемость
+- Structured logging (message templates с именованными параметрами).
+- Уровни:
+  - `Debug` — детали polling-цикла (можно отключить в prod).
+  - `Information` — старт/стоп службы, зарегистрированные команды.
+  - `Warning` — ожидаемые сбои (retry, rate limit, невалидный ввод).
+  - `Error` — необработанные исключения, сбой зависимостей.
+  - `Critical` — служба не может стартовать.
+- В каждом логе об ошибке — `UpdateId`/`ChatId` (маскированный), тип апдейта.
+- Correlation: `Activity`/`TraceId` пробрасывать (OpenTelemetry — опционально).
+- Health check: `BackgroundService` + heartbeat-лог раз в N минут.
+- Метрики (если подключены): счётчик обработанных апдейтов, ошибок,
+  latency вызовов Telegram API.
+
+## 9. Безопасность
+- Никаких секретов в репозитории, в логах, в сообщениях об ошибках.
+- Валидация **всех** входных данных из Telegram (длина текста, тип,
+  допустимые значения callback_data).
+- `callback_data` ≤ 64 байт — проверять перед отправкой.
+- Никаких динамических `eval`, `Process.Start` по пользовательскому вводу.
+- SQL/команды оболочки — только параметризованные/экранированные.
+- Зависимости — `dotnet list package --vulnerable` в CI (если подключено).
+- HTTPS — обязателен для любых внешних HTTP-вызовов.
+
+## 10. Тестирование
+- Покрытие бизнес-логики (handlers, services) — **≥ 70%**.
+- Покрытие `Program.cs`/composition root — не требуется.
+- Каждый handler команды — минимум:
+  - happy path;
+  - невалидный ввод;
+  - ошибка зависимости (мок бросает).
+- Интеграционные тесты с реальным Telegram API — **запрещены**.
+- Использовать `ITelegramBotClient` как интерфейс для моков.
+- Тесты детерминированные: без `Thread.Sleep`, без реальных сетевых вызовов,
+  без зависимости от времени суток/локали.
+- Имена тестов: `MethodName_Scenario_ExpectedResult`.
+- Один assert-концепт на тест (несколько `Should()` допустимо для одного факта).
+- Тестовые данные — через builder-паттерн (`UpdateBuilder`).
+
+## 11. Версионирование и коммиты
+- SemVer для тегов релизов.
+- Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`,
+  `test:`, `chore:`, `ci:`, `perf:`, `build:`.
+- Scope — по модулю: `feat(handlers): add /help command`.
+- Breaking change — `!` + `BREAKING CHANGE:` в теле.
+- Ветки: `main` (стабильная), `feature/*`, `fix/*`, `chore/*`.
+- PR — squash-merge, заголовок = Conventional Commit.
+- Один PR — одна логическая задача. Diff ≤ 400 строк (кроме рефакторинга).
+
+## 12. Документация
+- `README.md`: назначение, локальный запуск, переменные окружения,
+  деплой, структура.
+- Каждый публичный класс/метод — XML-doc (на русском), минимум `<summary>`,
+  для сложных — `<param>`, `<returns>`, `<exception>`.
+- При изменении поведения — обновить `README.md` и/или `CHANGELOG.md`.
+- ADR (Architecture Decision Record) — для значимых решений в `/docs/adr/`.
+
+## 13. CI/CD и деплой
+- Сборка/тесты — на каждый push в любую ветку.
+- Деплой — только push в `main`.
+- Пайплайн (`.github/workflows/`):
+  1. `restore` → `build` → `test` → `format --verify-no-changes`.
+  2. Publish (`-c Release -o ./publish`).
+  3. SCP → `/opt/mybot`.
+  4. `systemctl restart mybot`.
+  5. Health check: проверка `systemctl is-active mybot` + лог «started».
+- Секреты в Actions — только через `${{ secrets.* }}`.
+  Никаких `echo ${{ secrets.X }}` в логах.
+- Целевая служба: `mybot.service`, `Restart=always`, `RestartSec=5`,
+  `EnvironmentFile=/etc/mybot.env`.
+- Откат: предыдущая версия сохраняется в `/opt/mybot.prev`,
+  деплой — atomic rename.
+- Никаких ручных `dotnet publish` на сервере, никаких `docker-compose`.
+
+## 14. Что Copilot должен и не должен делать
+
+### Делать
+- Следовать структуре и слоям из раздела 3 и 5.
+- Предлагать unit-тесты вместе с новой логикой.
+- Использовать существующие интерфейсы (`ICommandHandler`,
+  `ITelegramSender`) для нового кода.
+- Указывать XML-doc для публичных API.
+- При предложении зависимости — обоснование по чек-листу раздела 2.
+- При неясности — задавать уточняющий вопрос, а не угадывать.
+
+### Не делать
+- `Console.WriteLine`, `Thread.Sleep`, `.Result`, `.Wait()`, `async void`
+  (кроме обработчиков событий — а их в проекте нет).
+- Хардкодить токены, `chat_id`, пути к секретам, абсолютные пути.
+- Предлагать Webhook без явного запроса — проект на Polling.
+- Предлагать Docker/Kubernetes/облачные PaaS.
+- Предлагать устаревшие API Telegram.Bot (событийная модель, `OnMessage`).
+- Писать логику в `Program.cs` сверх composition root.
+- Добавлять `#region`, закомментированный код, `TODO` без issue.
+- Вводить статические singleton-сервисы с состоянием.
+- Игнорировать `CancellationToken`.
+
+## 15. Чек-лист перед предложением кода
+- [ ] Код компилируется с `nullable enable` без предупреждений.
+- [ ] Все async-методы принимают `CancellationToken` (если применимо).
+- [ ] Нет запрещённых конструкций (раздел 14).
+- [ ] Логирование structured, без секретов и PII.
+- [ ] Внешние вызовы — с timeout и retry.
+- [ ] Есть unit-тесты на новую бизнес-логику.
+- [ ] Публичные API — с XML-doc.
+- [ ] Конфигурация — через `IOptions`, не хардкод.
+- [ ] Не добавлена зависимость без обоснования.
+- [ ] Diff соответствует Conventional Commits-заголовку.
+
+## 16. Полезные команды
+```bash
+dotnet build
+dotnet run --project src/Bot
+dotnet test
+dotnet format
+dotnet format --verify-no-changes
+dotnet publish src/Bot -c Release -o ./publish
+dotnet list package --vulnerable
+sudo systemctl status mybot
+sudo journalctl -u mybot -f

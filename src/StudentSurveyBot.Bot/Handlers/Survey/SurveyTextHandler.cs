@@ -1,6 +1,8 @@
 using StudentSurveyBot.Bot.Abstractions;
 using StudentSurveyBot.Bot.States;
+using StudentSurveyBot.Bot.Handlers.Survey.FrozenDictionaries;
 using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Frozen;
 using System.Text.RegularExpressions;
 using Telegram.Bot;
@@ -24,61 +26,14 @@ public class SurveyTextHandler : SurveyHandlerBase
         ITelegramBotClient botClient,
         IUserStateStore userStateStore,
         IValidator<string?> nicknameValidator,
+        IServiceScopeFactory scopeFactory,
         FrozenDictionary<
             SurveyStep,
             Func<SurveyTextHandler, Message, SurveyState, long, CancellationToken, Task<bool>>[]> stepHandlers)
-        : base(botClient, userStateStore)
+        : base(botClient, userStateStore, scopeFactory)
     {
         _nicknameValidator = nicknameValidator;
         _stepHandlers = stepHandlers;
-    }
-
-    internal static FrozenDictionary<
-        SurveyStep,
-        Func<SurveyTextHandler, Message, SurveyState, long, CancellationToken, Task<bool>>[]>
-        CreateStepHandlers()
-    {
-        return new Dictionary<
-            SurveyStep,
-            Func<SurveyTextHandler, Message, SurveyState, long, CancellationToken, Task<bool>>[]>
-        {
-            [SurveyStep.Wishes] =
-            [
-                static (handler, message, state, chatId, cancellationToken) =>
-                    handler.HandleSpecialWishesAsync(
-                        message,
-                        state,
-                        chatId,
-                        cancellationToken)
-            ],
-
-            [SurveyStep.FormApplicant] =
-            [
-                static (handler, message, state, chatId, cancellationToken) =>
-                    handler.HandleApplicantNameAsync(
-                        message,
-                        state,
-                        chatId,
-                        cancellationToken),
-
-                static (handler, message, state, chatId, cancellationToken) =>
-                    handler.HandleDirectionAsync(
-                        message,
-                        state,
-                        chatId,
-                        cancellationToken)
-            ],
-
-            [SurveyStep.TelegramNick] =
-            [
-                static (handler, message, state, chatId, cancellationToken) =>
-                    handler.HandleTelegramNickAsync(
-                        message,
-                        state,
-                        chatId,
-                        cancellationToken)
-            ]
-        }.ToFrozenDictionary();
     }
 
     public async Task HandleAsync(
@@ -105,7 +60,7 @@ public class SurveyTextHandler : SurveyHandlerBase
             cancellationToken);
     }
 
-    private async Task<bool> HandleApplicantNameAsync(
+    internal async Task<bool> HandleApplicantNameAsync(
         Message message,
         SurveyState state,
         long chatId,
@@ -134,18 +89,19 @@ public class SurveyTextHandler : SurveyHandlerBase
             chatId,
             "Выберите курс:",
             new InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton.WithCallbackData("1 курс", "course:1")],
-                [InlineKeyboardButton.WithCallbackData("2 курс", "course:2")],
-                [InlineKeyboardButton.WithCallbackData("3 курс", "course:3")],
-                [InlineKeyboardButton.WithCallbackData("4 курс", "course:4")]
-            ]),
+                SurveyCourseCatalog.Labels.Select(course =>
+                    new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData(
+                            course.Value,
+                            $"course:{course.Key}")
+                    })),
             cancellationToken);
 
         return true;
     }
 
-    private async Task<bool> HandleSpecialWishesAsync(
+    internal async Task<bool> HandleSpecialWishesAsync(
         Message message,
         SurveyState state,
         long chatId,
@@ -210,7 +166,7 @@ public class SurveyTextHandler : SurveyHandlerBase
         return true;
     }
 
-    private async Task<bool> HandleDirectionAsync(
+    internal async Task<bool> HandleDirectionAsync(
         Message message,
         SurveyState state,
         long chatId,
@@ -234,7 +190,7 @@ public class SurveyTextHandler : SurveyHandlerBase
         return true;
     }
 
-    private async Task<bool> HandleTelegramNickAsync(
+    internal async Task<bool> HandleTelegramNickAsync(
         Message message,
         SurveyState state,
         long chatId,
@@ -269,6 +225,7 @@ public class SurveyTextHandler : SurveyHandlerBase
         state.CurrentStep = SurveyStep.Thanks;
 
         await SaveStateAsync(chatId, state, cancellationToken);
+        await CompleteRegistrationAsync(state, cancellationToken);
 
         await SendMessageAsync(
             chatId,
