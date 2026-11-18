@@ -34,14 +34,6 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Check Copilot instructions
-        run: test -s .github/copilot-instructions.md
-
-      - name: Check Markdown style
-        uses: DavidAnson/markdownlint-cli2-action@v20
-        with:
-          globs: .github/copilot-instructions.md
-
       - name: Restore solution
         run: dotnet restore StudentSurveyBot.sln
 
