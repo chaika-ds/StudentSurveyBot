@@ -1,0 +1,102 @@
+name: SonarQube
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sonarqube-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: 8.0.x
+  CONFIGURATION: Release
+  SONAR_HOST_URL: http://localhost:9000
+  SONAR_PROJECT_KEY: student-survey-bot
+
+jobs:
+  analysis:
+    name: SonarQube analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Start SonarQube in Docker
+        run: docker compose -f docker-compose.sonarqube.yml up -d
+
+      - name: Wait for SonarQube
+        run: |
+          for attempt in {1..60}; do
+            status=$(curl --silent --fail "$SONAR_HOST_URL/api/system/status" | jq -r '.status' || true)
+            if [ "$status" = "UP" ]; then
+              exit 0
+            fi
+            echo "SonarQube status: ${status:-starting}. Attempt ${attempt}/60"
+            sleep 5
+          done
+          docker compose -f docker-compose.sonarqube.yml logs
+          exit 1
+
+      - name: Create SonarQube analysis token
+        env:
+          SONAR_ADMIN_PASSWORD: sonar-admin-${{ github.run_id }}
+        run: |
+          curl --silent --show-error --fail \
+            --user admin:admin \
+            --request POST \
+            --data-urlencode login=admin \
+            --data-urlencode previousPassword=admin \
+            --data-urlencode password="$SONAR_ADMIN_PASSWORD" \
+            "$SONAR_HOST_URL/api/users/change_password"
+
+          token=$(curl --silent --show-error --fail \
+            --user "admin:$SONAR_ADMIN_PASSWORD" \
+            --request POST \
+            --data-urlencode name=github-actions-${{ github.run_id }} \
+            "$SONAR_HOST_URL/api/user_tokens/generate" | jq -r '.token')
+
+          test -n "$token" && test "$token" != "null"
+          echo "SONAR_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Install SonarScanner for .NET
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Add .NET tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Restore
+        run: dotnet restore StudentSurveyBot.sln
+
+      - name: Start SonarQube analysis
+        run: >-
+          dotnet sonarscanner begin
+          /k:"${SONAR_PROJECT_KEY}"
+          /d:sonar.host.url="${SONAR_HOST_URL}"
+          /d:sonar.token="${SONAR_TOKEN}"
+
+      - name: Build
+        run: dotnet build StudentSurveyBot.sln --configuration ${{ env.CONFIGURATION }} --no-restore
+
+      - name: Test
+        run: dotnet test tests/StudentSurveyBot.UnitTests/StudentSurveyBot.UnitTests.csproj --configuration ${{ env.CONFIGURATION }} --no-build --no-restore
+
+      - name: Finish SonarQube analysis
+        run: dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+
+      - name: Stop SonarQube
+        if: always()
+        run: docker compose -f docker-compose.sonarqube.yml down -v
