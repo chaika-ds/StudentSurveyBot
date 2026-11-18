@@ -1,0 +1,55 @@
+name: Code quality
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - feature/**
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: code-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: 8.0.x
+  CONFIGURATION: Release
+
+jobs:
+  solution-quality:
+    name: Check solution style
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Check Copilot instructions
+        run: test -s .github/copilot-instructions.md
+
+      - name: Check Markdown style
+        uses: DavidAnson/markdownlint-cli2-action@v20
+        with:
+          globs: .github/copilot-instructions.md
+
+      - name: Restore solution
+        run: dotnet restore StudentSurveyBot.sln
+
+      - name: Verify solution formatting
+        run: dotnet format StudentSurveyBot.sln --verify-no-changes --no-restore
+
+      - name: Build solution
+        run: dotnet build StudentSurveyBot.sln --configuration ${{ env.CONFIGURATION }} --no-restore
+
+      - name: Test solution
+        run: dotnet test StudentSurveyBot.sln --configuration ${{ env.CONFIGURATION }} --no-build --no-restore
