@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using StudentSurveyBot.Core.Entities;
 
+namespace StudentSurveyBot.Data.Configurations;
+
 public sealed class AdditionalInfoConfiguration
     : IEntityTypeConfiguration<AdditionalInfo>
 {
