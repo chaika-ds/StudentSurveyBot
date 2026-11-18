@@ -1,6 +1,6 @@
 using StudentSurveyBot.Core.Entities;
 
-namespace StudentSurveyBot.Core.Services;
+namespace StudentSurveyBot.Core.Abstractions;
 
 public interface IStudentService
 {

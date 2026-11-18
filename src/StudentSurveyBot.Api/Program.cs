@@ -1,61 +1,71 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using StudentSurveyBot.Api.Configuration;
 using StudentSurveyBot.Bot;
+using StudentSurveyBot.Core;
+using StudentSurveyBot.Core.Entities;
 using StudentSurveyBot.Core.Services;
 using StudentSurveyBot.Data;
 using Telegram.Bot;
 
-var builder = WebApplication.CreateBuilder(args);
+using var fallbackLoggerFactory = LoggerFactory.Create(logging => logging.AddConsole());
+var fallbackLogger = fallbackLoggerFactory.CreateLogger("StudentSurveyBot.Api");
+ILogger? applicationLogger = null;
 
-builder.Logging.ClearProviders();
-
-builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+try
 {
-    loggerConfiguration
-        .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .WriteTo.Console();
+    var builder = WebApplication.CreateBuilder(args);
 
-    if (!string.IsNullOrWhiteSpace(context.Configuration["Seq:Url"]))
-    {
-        loggerConfiguration.WriteTo.Seq(context.Configuration["Seq:Url"]!);
-    }
+    builder.Logging.ClearProviders();
 
-    loggerConfiguration.WriteTo.File(
-        path: Path.Combine(AppContext.BaseDirectory, "logs", "student-bot-.log"),
-        rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7);
-});
+    SerilogConfiguration.Configure(builder);
 
-builder.Services.Configure<BotOptions>(builder.Configuration.GetSection("Bot"));
+    builder.Services.Configure<BotOptions>(builder.Configuration.GetSection("Bot"));
 
-builder.Services.AddSingleton<ITelegramBotClient>(_ =>
-    new TelegramBotClient(builder.Configuration["Bot:Token"] ?? throw new InvalidOperationException("Bot:Token is not configured.")));
+    builder.Services.AddSingleton<ITelegramBotClient>(_ =>
+        new TelegramBotClient(builder.Configuration["Bot:Token"] ?? throw new InvalidOperationException("Bot:Token is not configured.")));
 
-builder.Services.AddCoreServices();
-builder.Services.AddDataServices(builder.Configuration);
-builder.Services.AddBotServices();
+    builder.Services.AddCoreServices();
+    builder.Services.AddDataServices(builder.Configuration);
+    builder.Services.AddBotServices();
 
-builder.Services.AddValidatorsFromAssembly(typeof(StudentSurveyBot.Core.Validators.FullNameValidator).Assembly);
+    builder.Services.AddValidatorsFromAssembly(
+        typeof(StudentSurveyBot.Core.Validators.FullNameValidator).Assembly,
+        ServiceLifetime.Singleton);
 
-builder.Services.AddHostedService<TelegramPollingService>();
+    builder.Services.AddHostedService<TelegramPollingService>();
 
-var app = builder.Build();
+    var app = builder.Build();
+    applicationLogger = app.Logger;
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
+//using (var scope = app.Services.CreateScope())
+//{
+//    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+//    await dbContext.Database.MigrateAsync();
 
-    var interestSeed = scope.ServiceProvider.GetRequiredService<InterestSeed>();
-    await interestSeed.SeedAsync();
+//    var interestSeed = scope.ServiceProvider.GetRequiredService<InterestSeed>();
+//    await interestSeed.SeedAsync();
 
-    var communitySeed = scope.ServiceProvider.GetRequiredService<CommunitySeed>();
-    await communitySeed.SeedAsync();
+//    var communitySeed = scope.ServiceProvider.GetRequiredService<CommunitySeed>();
+//    await communitySeed.SeedAsync();
+//}
+
+    app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+    await app.RunAsync();
 }
-
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-
-await app.RunAsync();
+catch (Exception exception)
+{
+    (applicationLogger ?? fallbackLogger).LogError(
+        exception,
+        "Ошибка при запуске приложения.");
+    Environment.ExitCode = 1;
+}
+finally
+{
+    (applicationLogger ?? fallbackLogger).LogInformation(
+        "Процесс приложения завершён.");
+}

@@ -1,7 +1,8 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Requests;
 
-namespace StudentSurveyBot.Bot;
+namespace StudentSurveyBot.Bot.Handlers;
 
 public sealed class AdminHandler
 {
@@ -14,9 +15,12 @@ public sealed class AdminHandler
 
     public async Task HandleAsync(Message message, CancellationToken cancellationToken)
     {
-        await _botClient.SendTextMessage(
-            chatId: message.Chat.Id,
-            text: "Админский сценарий готов к расширению.",
-            cancellationToken: cancellationToken);
+        await _botClient.SendRequest(
+            new SendMessageRequest
+            {
+                ChatId = message.Chat.Id,
+                Text = "Админский сценарий готов к расширению."
+            },
+            cancellationToken);
     }
 }

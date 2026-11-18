@@ -1,7 +1,8 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Requests;
 
-namespace StudentSurveyBot.Bot;
+namespace StudentSurveyBot.Bot.Handlers;
 
 public sealed class MatchingHandler
 {
@@ -14,9 +15,12 @@ public sealed class MatchingHandler
 
     public async Task HandleAsync(Message message, CancellationToken cancellationToken)
     {
-        await _botClient.SendTextMessage(
-            chatId: message.Chat.Id,
-            text: "Подбор мероприятий будет реализован в следующих версиях.",
-            cancellationToken: cancellationToken);
+        await _botClient.SendRequest(
+            new SendMessageRequest
+            {
+                ChatId = message.Chat.Id,
+                Text = "Подбор мероприятий будет реализован в следующих версиях."
+            },
+            cancellationToken);
     }
 }

@@ -1,4 +1,4 @@
-namespace StudentSurveyBot.Bot;
+namespace StudentSurveyBot.Bot.States;
 
 public enum SurveyStep
 {

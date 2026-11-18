@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using StudentSurveyBot.Bot.Handlers;
+using StudentSurveyBot.Bot.Middleware;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -8,16 +12,16 @@ namespace StudentSurveyBot.Bot;
 public sealed class TelegramPollingService : IHostedService
 {
     private readonly ITelegramBotClient _botClient;
-    private readonly UpdateHandler _updateHandler;
+    private readonly ExceptionHandlingMiddleware _exceptionHandlingMiddleware;
     private readonly ILogger<TelegramPollingService> _logger;
 
     public TelegramPollingService(
         ITelegramBotClient botClient,
-        UpdateHandler updateHandler,
+        ExceptionHandlingMiddleware exceptionHandlingMiddleware,
         ILogger<TelegramPollingService> logger)
     {
         _botClient = botClient;
-        _updateHandler = updateHandler;
+        _exceptionHandlingMiddleware = exceptionHandlingMiddleware;
         _logger = logger;
     }
 
@@ -26,8 +30,9 @@ public sealed class TelegramPollingService : IHostedService
         _logger.LogInformation("Telegram polling started.");
 
         _botClient.StartReceiving(
-            updateHandler: _updateHandler.HandleAsync,
-            pollingErrorHandler: (exception, _) =>
+            updateHandler: (client, update, token) =>
+                _exceptionHandlingMiddleware.InvokeAsync(client, update, token),
+            errorHandler: (client, exception, source, token) =>
             {
                 _logger.LogError(exception, "Telegram polling error.");
                 return Task.CompletedTask;
