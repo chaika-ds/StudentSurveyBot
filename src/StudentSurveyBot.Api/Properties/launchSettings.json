@@ -4,7 +4,10 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Bot__Token": "9022981824:AAG6ZX40N3YxnYENIedw6zBpxbssRCLW1g0",
+        "ConnectionStrings__DefaultConnection": "Host=localhost;Port=5432;Database=student_survey_bot;Username=postgres;Password=secret"
+
       },
       "applicationUrl": "https://localhost:54849;http://localhost:54850"
     }
