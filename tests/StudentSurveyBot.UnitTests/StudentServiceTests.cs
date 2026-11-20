@@ -24,10 +24,10 @@ public sealed class StudentServiceTests
             Direction = "IT",
             Course = "3"
         };
-            
+
         context.Students.Add(student);
         await context.SaveChangesAsync();
-                
+
         var service = new StudentService(context);
         var created = await service.GetOrCreateAsync(111L);
 
