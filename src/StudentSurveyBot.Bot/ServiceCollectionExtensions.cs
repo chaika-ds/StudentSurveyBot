@@ -44,4 +44,3 @@ public static class BotServiceCollectionExtensions
         return services;
     }
 }
-    
