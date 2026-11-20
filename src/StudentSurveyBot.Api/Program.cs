@@ -41,18 +41,6 @@ try
     var app = builder.Build();
     applicationLogger = app.Logger;
 
-//using (var scope = app.Services.CreateScope())
-//{
-//    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-//    await dbContext.Database.MigrateAsync();
-
-//    var interestSeed = scope.ServiceProvider.GetRequiredService<InterestSeed>();
-//    await interestSeed.SeedAsync();
-
-//    var communitySeed = scope.ServiceProvider.GetRequiredService<CommunitySeed>();
-//    await communitySeed.SeedAsync();
-//}
-
     app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
     await app.RunAsync();
