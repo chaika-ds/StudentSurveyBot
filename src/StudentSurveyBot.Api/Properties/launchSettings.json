@@ -5,7 +5,7 @@
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "Bot__Token": "9022981824:AAG6ZX40N3YxnYENIedw6zBpxbssRCLW1g0",
+        "TELEGRAM_BOT_TOKEN": "9074376517:AAG7UmAgkRq1QnzFKj3TChwLGwSeK1Uq3Bc",
         "ConnectionStrings__DefaultConnection": "Host=localhost;Port=5432;Database=student_survey_bot;Username=postgres;Password=secret"
 
       },

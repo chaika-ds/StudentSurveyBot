@@ -23,10 +23,22 @@ try
 
     SerilogConfiguration.Configure(builder);
 
-    builder.Services.Configure<BotOptions>(builder.Configuration.GetSection("Bot"));
+    builder.Services.Configure<BotOptions>(options =>
+    {
+        options.Token = builder.Configuration["TELEGRAM_BOT_TOKEN"] ?? string.Empty;
+        options.AdminIds = builder.Configuration
+            .GetSection("Bot:AdminIds")
+            .Get<List<long>>() ?? [];
+    });
 
     builder.Services.AddSingleton<ITelegramBotClient>(_ =>
-        new TelegramBotClient(builder.Configuration["Bot:Token"] ?? throw new InvalidOperationException("Bot:Token is not configured.")));
+    {
+        var token = builder.Configuration["TELEGRAM_BOT_TOKEN"];
+        return new TelegramBotClient(
+            !string.IsNullOrWhiteSpace(token)
+                ? token
+                : throw new InvalidOperationException("TELEGRAM_BOT_TOKEN is not configured."));
+    });
 
     builder.Services.AddCoreServices();
     builder.Services.AddDataServices(builder.Configuration);

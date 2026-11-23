@@ -21,7 +21,8 @@ internal static class SurveyCallbackStrategies
             [SurveyCallbackKey.Course] = new SurveyCallbackHandlerStrategy(handler.HandleCourseAsync),
             [SurveyCallbackKey.Consent] = new SurveyCallbackHandlerStrategy(handler.HandleConsentAsync),
             [SurveyCallbackKey.TelegramNick] = new SurveyCallbackHandlerStrategy(handler.HandleTelegramNickSkipAsync),
-            [SurveyCallbackKey.SpecialWishes] = new SurveyCallbackHandlerStrategy(handler.HandleSpecialWishesAsync)
+            [SurveyCallbackKey.SpecialWishes] = new SurveyCallbackHandlerStrategy(handler.HandleSpecialWishesAsync),
+            [SurveyCallbackKey.NextStep] = new SurveyCallbackHandlerStrategy(handler.HandleNextStepAsync)
         }.ToFrozenDictionary();
     }
 }

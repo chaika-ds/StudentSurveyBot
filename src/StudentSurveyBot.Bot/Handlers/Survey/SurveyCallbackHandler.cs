@@ -102,13 +102,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
 
         await BotClient.AnswerCallbackQuery(
             callbackQuery.Id,
-            "Направление сохранено.",
             cancellationToken: cancellationToken);
-
-        await SendMessageAsync(
-            chatId,
-            $"Направление сохранено: {direction.DisplayName}.",
-            cancellationToken);
 
         await SendMessageAsync(
             chatId,
@@ -244,7 +238,12 @@ public class SurveyCallbackHandler : SurveyHandlerBase
 
         await SendMessageAsync(
             chatId,
-            "Социальный профиль:\n\nСтиль знакомства:",
+            "СОЦИАЛЬНЫЙ ПРОФИЛЬ",
+            cancellationToken);
+
+        await SendMessageAsync(
+            chatId,
+            "Стиль знакомства:",
             new InlineKeyboardMarkup(
             [
                     [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.ContactStyles["easy"], "social-style:easy")],
@@ -328,11 +327,20 @@ public class SurveyCallbackHandler : SurveyHandlerBase
             state.PreferredTime = data["social-time:".Length..];
             state.CurrentStep = SurveyStep.SocialProfile;
             await SaveStateAsync(chatId, state, cancellationToken);
-            await AnswerAndSendAsync(
-                callbackQuery,
-                chatId,
+
+            await BotClient.AnswerCallbackQuery(
+                callbackQuery.Id,
                 "Удобное время сохранено.",
-                "Логистика и бюджет:\n\nБюджет на одно мероприятие:",
+                cancellationToken: cancellationToken);
+
+            await SendMessageAsync(
+                chatId,
+                "ЛОГИСТИКА И БЮДЖЕТ",
+                cancellationToken);
+
+            await SendMessageAsync(
+                chatId,
+                "Бюджет на одно мероприятие:",
                 new InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton.WithCallbackData(SurveyAnswerCatalog.Budgets["free"], "budget:free")],
@@ -429,7 +437,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
 
         await SendMessageAsync(
             chatId,
-            "Направление: выберите вариант или напишите своё.",
+            "НАПРАВЛЕНИЕ:",
             cancellationToken);
 
         foreach (var group in StudyDirectionCatalog.Groups)
@@ -525,7 +533,7 @@ public class SurveyCallbackHandler : SurveyHandlerBase
             "Пожелания пропущены.",
             cancellationToken: cancellationToken);
 
-        await SendMessageAsync(
+        await SendHtmlMessageAsync(
             chatId,
             SurveySummaryFormatter.Build(state),
             cancellationToken);
@@ -568,12 +576,42 @@ public class SurveyCallbackHandler : SurveyHandlerBase
 
         await SendMessageAsync(
             chatId,
-            $"Спасибо за регистрацию, {state.FullName}!\n\n" +
-            $"Краткая сводка: {state.FullName} / " +
-            $"{state.Direction ?? "не указано"} / " +
-            $"{state.Course ?? "не указан"}.",
+            $"Спасибо за регистрацию, {state.FullName}!",
+            cancellationToken);
+
+        await SendMessageAsync(
+            chatId,
+            "Хочешь уже найти компанию?",
+            BuildNextStepKeyboard(),
             cancellationToken);
 
         return true;
     }
+
+    internal async Task<bool> HandleNextStepAsync(
+        CallbackQuery callbackQuery,
+        string data,
+        SurveyState state,
+        long chatId,
+        CancellationToken cancellationToken)
+    {
+        if (!data.StartsWith("next-step:", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        await BotClient.AnswerCallbackQuery(
+            callbackQuery.Id,
+            "Выбор сохранён.",
+            cancellationToken: cancellationToken);
+
+        return true;
+    }
+
+    private static InlineKeyboardMarkup BuildNextStepKeyboard() =>
+        new(
+        [
+            [InlineKeyboardButton.WithCallbackData("Да, подобрать", "next-step:match")],
+            [InlineKeyboardButton.WithCallbackData("Пока просто посмотрю", "next-step:browse")]
+        ]);
 }

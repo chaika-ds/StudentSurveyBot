@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace StudentSurveyBot.Bot.Handlers.Survey;
@@ -162,6 +163,21 @@ public abstract class SurveyHandlerBase
                 ChatId = chatId,
                 Text = text,
                 ReplyMarkup = replyMarkup
+            },
+            cancellationToken);
+    }
+
+    protected Task SendHtmlMessageAsync(
+        long chatId,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        return BotClient.SendRequest(
+            new SendMessageRequest
+            {
+                ChatId = chatId,
+                Text = text,
+                ParseMode = ParseMode.Html
             },
             cancellationToken);
     }

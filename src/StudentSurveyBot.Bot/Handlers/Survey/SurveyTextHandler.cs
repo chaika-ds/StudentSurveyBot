@@ -148,7 +148,7 @@ public class SurveyTextHandler : SurveyHandlerBase
         state.CurrentStep = SurveyStep.Consent;
         await SaveStateAsync(chatId, state, cancellationToken);
 
-        await SendMessageAsync(
+        await SendHtmlMessageAsync(
             chatId,
             SurveySummaryFormatter.Build(state),
             cancellationToken);
@@ -182,11 +182,6 @@ public class SurveyTextHandler : SurveyHandlerBase
 
         state.Direction = message.Text.Trim();
         await SaveStateAsync(chatId, state, cancellationToken);
-
-        await SendMessageAsync(
-            chatId,
-            "Направление сохранено.",
-            cancellationToken);
 
         return true;
     }
@@ -230,12 +225,22 @@ public class SurveyTextHandler : SurveyHandlerBase
 
         await SendMessageAsync(
             chatId,
-            $"Спасибо за регистрацию, {state.FullName}!\n\n" +
-            $"Краткая сводка: {state.FullName} / " +
-            $"{state.Direction ?? "не указано"} / " +
-            $"{state.Course ?? "не указан"}.",
+            $"Спасибо за регистрацию, {state.FullName}!",
+            cancellationToken);
+
+        await SendMessageAsync(
+            chatId,
+            "Хочешь уже найти компанию?",
+            BuildNextStepKeyboard(),
             cancellationToken);
 
         return true;
     }
+
+    private static InlineKeyboardMarkup BuildNextStepKeyboard() =>
+        new(
+        [
+            [InlineKeyboardButton.WithCallbackData("Да, подобрать", "next-step:match")],
+            [InlineKeyboardButton.WithCallbackData("Пока просто посмотрю", "next-step:browse")]
+        ]);
 }

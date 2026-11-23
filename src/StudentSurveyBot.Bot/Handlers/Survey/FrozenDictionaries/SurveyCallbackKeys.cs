@@ -18,6 +18,7 @@ internal static class SurveyCallbackKeys
             ["course"] = SurveyCallbackKey.Course,
             ["consent"] = SurveyCallbackKey.Consent,
             ["telegram-nick"] = SurveyCallbackKey.TelegramNick,
-            ["special-wishes"] = SurveyCallbackKey.SpecialWishes
+            ["special-wishes"] = SurveyCallbackKey.SpecialWishes,
+            ["next-step"] = SurveyCallbackKey.NextStep
         }.ToFrozenDictionary();
 }

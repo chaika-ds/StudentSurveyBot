@@ -14,5 +14,6 @@ public enum SurveyCallbackKey
     Consent = 9,
     Budget = 10,
     TelegramNick = 11,
-    SpecialWishes = 12
+    SpecialWishes = 12,
+    NextStep = 13
 }
